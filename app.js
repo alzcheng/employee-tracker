@@ -35,7 +35,7 @@ const mainMenu = () => {
                 addToDB();
                 break;
             case "View departments, roles, or employees":
-
+                viewDB();
                 break;
             case "Update employee roles":
 
@@ -78,11 +78,13 @@ const addToDB = () => {
 };
 
 const addDepartment = () => {
-    inquirer.prompt({
-        name: "department_name",
-        type: "input",
-        message: "Please enter the new department name."
-    }).then((userResponse) => {
+    inquirer.prompt(
+        {
+            name: "department_name",
+            type: "input",
+            message: "What is the name of the new department?"
+        }
+    ).then((userResponse) => {
         connection.query(
             "INSERT INTO department (name) VALUE (?)", userResponse.department_name, (err, data) => {
                 if (err) throw err;
@@ -90,4 +92,132 @@ const addDepartment = () => {
             }
         )
     })
+}
+
+const addRole = () => {
+    inquirer.prompt([
+        {
+            name: "title",
+            type: "input",
+            message: "What is the title of the role?"
+        },
+        {
+            name: "salary",
+            type: "input",
+            message: "What is the salary of the role?"
+            //Need to add validation
+        },
+        {
+            name: "department_id",
+            type: "input",
+            message: "What is the department id of the role?"
+        },
+    ]).then(({ title, salary, department_id }) => {
+        connection.query(
+            "INSERT INTO role (title, salary, department_id) VALUE (?,?,?)", [title, salary, department_id], (err, data) => {
+                if (err) throw err;
+                mainMenu();
+            }
+        )
+    })
+}
+
+const addEmployee = () => {
+    inquirer.prompt([
+        {
+            name: "first_name",
+            type: "input",
+            message: "What is the first name of the employee?"
+        },
+        {
+            name: "last_name",
+            type: "input",
+            message: "What is the last name of the employee?"
+        },
+        {
+            name: "role_id",
+            type: "input",
+            message: "What is role ID of the employee?"
+        },
+        {
+            name: "manager_id",
+            type: "input",
+            message: "What is manager ID of the employee?"
+        },
+    ]).then(({ first_name, last_name, role_id, manager_id }) => {
+        if (manager_id === "") {
+            connection.query(
+                "INSERT INTO employee (first_name, last_name, role_id) VALUE (?,?,?)", [first_name, last_name, role_id], (err) => {
+                    if (err) throw err;
+                    mainMenu();
+                }
+            )
+        } else {
+            connection.query(
+                "INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUE (?,?,?,?)", [first_name, last_name, role_id, manager_id], (err) => {
+                    if (err) throw err;
+                    mainMenu();
+                }
+            )
+        }
+
+    })
+}
+
+// -------------------- Viewing the Database --------------------------
+const viewDB = () => {
+    inquirer.prompt({
+        name: "view_table",
+        type: "list",
+        message: "Which table would you like to view in the database?",
+        choices: [
+            "Department",
+            "Role",
+            "Employee"
+        ],
+    }).then((userResponse) => {
+        switch (userResponse.view_table) {
+            case "Department":
+                viewDepartment();
+                break;
+
+            case "Role":
+                viewRole();
+                break;
+
+            default:
+                viewEmployee();
+                break;
+        }
+    })
+};
+
+const viewDepartment = () => {
+    connection.query(
+        "SELECT * FROM department", (err, data) => {
+            if (err) throw err;
+            console.table(data);
+            mainMenu();
+        }
+    )
+}
+
+const viewRole = () => {
+    connection.query(
+        "SELECT * FROM role", (err, data) => {
+            if (err) throw err;
+            console.table(data);
+            mainMenu();
+        }
+    )
+}
+
+const viewEmployee = () => {
+    connection.query(
+        "SELECT * FROM employee", (err, data) => {
+            if (err) throw err;
+            console.table(data);
+            mainMenu();
+        }
+    )
 }
