@@ -38,7 +38,7 @@ const mainMenu = () => {
                 viewDB();
                 break;
             case "Update employee roles":
-
+                updateEmployeeRoles();
                 break;
 
             default:
@@ -220,4 +220,40 @@ const viewEmployee = () => {
             mainMenu();
         }
     )
+}
+
+// -------------------- Updating the Database --------------------------
+
+const updateEmployeeRoles = () => {
+    inquirer.prompt([
+        {
+            name: "first_name",
+            type: "input",
+            message: "What is the first name of the employee you are trying to update?"
+        },
+        {
+            name: "last_name",
+            type: "input",
+            message: "What is the last name of the employee you are trying to update?"
+        },
+        {
+            name: "role_id",
+            type: "input",
+            message: "What is the role ID that you want to update?"
+        },
+        {
+            name: "manager_id",
+            type: "input",
+            message: "What is the manager ID that you want to update?"
+        }
+    ]).then(({ first_name, last_name, role_id, manager_id }) => {
+        connection.query(
+            "UPDATE employee SET role_id = ?, manager_id = ? WHERE first_name = ? AND last_name = ?",
+            [role_id, manager_id, first_name, last_name],
+            (err) => {
+                if (err) throw err;
+                mainMenu();
+            }
+        )
+    })
 }
