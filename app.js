@@ -127,46 +127,77 @@ const addRole = () => {
     connection.query(
         `SELECT * FROM department`, (err, data) => {
             if (err) throw err;
-            // let choices = new Promise((resolve, reject) => {
             const dept_id = [];
             const dept_names = [];
             for (let i = 0; i < data.length; i++) {
                 dept_id.push(data[i].id);
                 dept_names.push(data[i].name);
             }
-            inquirer.prompt([
-                {
-                    name: "title",
-                    type: "input",
-                    message: "What is the title of the role?"
-                },
-                {
-                    name: "salary",
-                    type: "input",
-                    message: "What is the salary of the role?"
-                    //Need to add validation
-                },
-                {
-                    name: "department_name",
-                    type: "list",
-                    message: "Which department does this role belong to?",
-                    choices: dept_names
-                },
-            ]).then(({ title, salary, department_name }) => {
-                const index = dept_names.findIndex((item) => item === department_name);
-                connection.query(
-                    "INSERT INTO role (title, salary, department_id) VALUE (?,?,?)", [title, salary, dept_id[index]], (err) => {
-                        if (err) throw err;
-                        mainMenu();
-                    }
-                )
-            });
+            addRoleSelect(dept_id, dept_names);
         }
     )
 };
 
+const addRoleSelect = (dept_id, dept_names) => {
+    inquirer.prompt([
+        {
+            name: "title",
+            type: "input",
+            message: "What is the title of the role?"
+        },
+        {
+            name: "salary",
+            type: "input",
+            message: "What is the salary of the role?"
+            //Need to add validation
+        },
+        {
+            name: "department_name",
+            type: "list",
+            message: "Which department does this role belong to?",
+            choices: dept_names
+        },
+    ]).then(({ title, salary, department_name }) => {
+        const index = dept_names.findIndex((item) => item === department_name);
+        connection.query(
+            "INSERT INTO role (title, salary, department_id) VALUE (?,?,?)", [title, salary, dept_id[index]], (err) => {
+                if (err) throw err;
+                mainMenu();
+            }
+        )
+    });
+}
 
 const addEmployee = () => {
+    connection.query(
+        `SELECT id, title FROM role;`,
+        (err, data) => {
+            if (err) throw err;
+            const role_id = [];
+            const role_titles = [];
+            for (let i = 0; i < data.length; i++) {
+                role_id.push(data[i].id);
+                role_titles.push(data[i].title);
+            }
+            connection.query(
+                'SELECT id, CONCAT(first_name, " ", last_name) "mgr_name" FROM employee',
+                (err, data) => {
+                    if (err) throw err;
+                    //Need to insert case for NULL
+                    const mgr_id = [];
+                    const mgr_names = [];
+                    for (let i = 0; i < data.length; i++) {
+                        mgr_id.push(data[i].id);
+                        mgr_names.push(data[i].mgr_name);
+                    }
+                    addEmployeeSelect(role_id, role_titles, mgr_id, mgr_names);
+                }
+            )
+        }
+    )
+};
+
+const addEmployeeSelect = (role_id, role_titles, mgr_id, mgr_names) => {
     inquirer.prompt([
         {
             name: "first_name",
@@ -179,35 +210,32 @@ const addEmployee = () => {
             message: "What is the last name of the employee?"
         },
         {
-            name: "role_id",
-            type: "input",
-            message: "What is role ID of the employee?"
+            name: "selected_role",
+            type: "list",
+            message: "What role does this new employee have?",
+            choices: role_titles
         },
         {
-            name: "manager_id",
-            type: "input",
-            message: "What is manager ID of the employee?"
+            name: "selected_mgr",
+            type: "list",
+            message: "Who is this employee's manager?",
+            choices: mgr_names
         },
-    ]).then(({ first_name, last_name, role_id, manager_id }) => {
-        if (manager_id === "") {
-            connection.query(
-                "INSERT INTO employee (first_name, last_name, role_id) VALUE (?,?,?)", [first_name, last_name, role_id], (err) => {
-                    if (err) throw err;
-                    mainMenu();
-                }
-            )
-        } else {
-            connection.query(
-                "INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUE (?,?,?,?)", [first_name, last_name, role_id, manager_id], (err) => {
-                    if (err) throw err;
-                    mainMenu();
-                }
-            )
-        }
+    ]).then(({ first_name, last_name, selected_role, selected_mgr }) => {
+        const role_index = role_titles.findIndex(item => item === selected_role);
+        const mgr_index = mgr_names.findIndex(item => item === selected_mgr);
+        connection.query(
+            `INSERT INTO employee(first_name, last_name, role_id, manager_id) 
+            VALUE(?, ?, ?, ?);`,
+            [first_name, last_name, role_id[role_index], mgr_id[mgr_index]],
+            (err) => {
+                if (err) throw err;
+                mainMenu();
+            }
+        )
 
     })
 }
-
 
 // -------------------- Updating the Database --------------------------
 
