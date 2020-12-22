@@ -23,19 +23,35 @@ const mainMenu = () => {
         type: "list",
         message: "Which action would you like to do?",
         choices: [
-            "Add departments, roles, or employees",
-            "View departments, roles, or employees",
+            "View all departments",
+            "View all roles",
+            "View all employees",
+            "Add a department",
+            "Add a role",
+            "Add an employee",
             "Update employee roles",
             "Exit program",
         ],
     }).then((userResponse) => {
         console.log(userResponse.action);
         switch (userResponse.action) {
-            case "Add departments, roles, or employees":
-                addToDB();
+            case "View all departments":
+                viewDepartment();
                 break;
-            case "View departments, roles, or employees":
-                viewDB();
+            case "View all roles":
+                viewRole();
+                break;
+            case "View all employees":
+                viewEmployee();
+                break;
+            case "Add a department":
+                addDepartment();
+                break;
+            case "Add a role":
+                addRole();
+                break;
+            case "Add an employee":
+                addEmployee();
                 break;
             case "Update employee roles":
                 updateEmployeeRoles();
@@ -50,32 +66,6 @@ const mainMenu = () => {
 };
 
 // -------------------- Adding to the Database --------------------------
-const addToDB = () => {
-    inquirer.prompt({
-        name: "added_element",
-        type: "list",
-        message: "Which element do you like to add to the database?",
-        choices: [
-            "Department",
-            "Role",
-            "Employee"
-        ],
-    }).then((userResponse) => {
-        switch (userResponse.added_element) {
-            case "Department":
-                addDepartment();
-                break;
-
-            case "Role":
-                addRole();
-                break;
-
-            default:
-                addEmployee();
-                break;
-        }
-    })
-};
 
 const addDepartment = () => {
     inquirer.prompt(
@@ -165,32 +155,6 @@ const addEmployee = () => {
 }
 
 // -------------------- Viewing the Database --------------------------
-const viewDB = () => {
-    inquirer.prompt({
-        name: "view_table",
-        type: "list",
-        message: "Which table would you like to view in the database?",
-        choices: [
-            "Department",
-            "Role",
-            "Employee"
-        ],
-    }).then((userResponse) => {
-        switch (userResponse.view_table) {
-            case "Department":
-                viewDepartment();
-                break;
-
-            case "Role":
-                viewRole();
-                break;
-
-            default:
-                viewEmployee();
-                break;
-        }
-    })
-};
 
 const viewDepartment = () => {
     connection.query(
@@ -204,27 +168,33 @@ const viewDepartment = () => {
 
 const viewRole = () => {
     connection.query(
-        "SELECT * FROM role", (err, data) => {
-            if (err) throw err;
-            console.table(data);
-            mainMenu();
-        }
+        `SELECT role.id, role.title, role.salary, department.name "department"
+        FROM role
+        INNER JOIN department ON role.department_id = department.id;`, (err, data) => {
+        if (err) throw err;
+        console.table(data);
+        mainMenu();
+    }
     )
 }
 
 const viewEmployee = () => {
     connection.query(
-        "SELECT * FROM employee", (err, data) => {
-            if (err) throw err;
-            console.table(data);
-            mainMenu();
-        }
+        `SELECT E1.id, E1.first_name, E1.last_name, role.title, role.salary, department.name, CONCAT(E2.first_name," ", E2.last_name) "manager"
+        FROM employee E1
+        INNER JOIN role ON role.id = E1.role_id
+        INNER JOIN department ON role.department_id = department.id
+        LEFT JOIN employee E2 ON E1.manager_id = E2.id;`, (err, data) => {
+        if (err) throw err;
+        console.table(data);
+        mainMenu();
+    }
     )
 }
 
 // -------------------- Updating the Database --------------------------
 
-const updateEmployeeRoles = () => {
+const updateEmployee = () => {
     inquirer.prompt([
         {
             name: "first_name",
@@ -237,23 +207,38 @@ const updateEmployeeRoles = () => {
             message: "What is the last name of the employee you are trying to update?"
         },
         {
-            name: "role_id",
-            type: "input",
-            message: "What is the role ID that you want to update?"
+            name: "update_type",
+            type: "choices",
+            message: "What would you like to update?",
+            choices: [
+                "Employee's role",
+                "Employee's manager"
+            ]
         },
-        {
-            name: "manager_id",
-            type: "input",
-            message: "What is the manager ID that you want to update?"
-        }
-    ]).then(({ first_name, last_name, role_id, manager_id }) => {
-        connection.query(
-            "UPDATE employee SET role_id = ?, manager_id = ? WHERE first_name = ? AND last_name = ?",
-            [role_id, manager_id, first_name, last_name],
-            (err) => {
-                if (err) throw err;
-                mainMenu();
-            }
-        )
+
+    ]).then(({ first_name, last_name, update_type }) => {
+        // if (update_type === "Employee's role") {
+        //     updateEmployeeRole();
+        // } else{
+        //     updateEmployeeManager(); 
+        // }
+
+        // connection.query(
+        //     "UPDATE employee SET role_id = ?, manager_id = ? WHERE first_name = ? AND last_name = ?",
+        //     [role_id, manager_id, first_name, last_name],
+        //     (err) => {
+        //         if (err) throw err;
+        //         mainMenu();
+        //     }
+        // )
     })
 }
+
+const updateEmployeeRole = () => {
+
+}
+// const showRole = (role_id) => {
+//     connection.query(
+//         ""
+//     )
+// }
