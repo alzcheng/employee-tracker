@@ -34,6 +34,9 @@ const mainMenu = () => {
             "Add an employee",
             "Update employee's role",
             "Update employee's manager",
+            "Delete a department",
+            "Delete a role",
+            "Delete an employee",
             "Exit program",
         ],
     }).then((userResponse) => {
@@ -65,6 +68,15 @@ const mainMenu = () => {
                 break;
             case "Update employee's manager":
                 updateEmpMgr();
+                break;
+            case "Delete a department":
+                deleteDepartment();
+                break;
+            case "Delete a role":
+                deleteRole();
+                break;
+            case "Delete an employee":
+                deleteEmployee();
                 break;
 
             default:
@@ -124,9 +136,6 @@ const viewEmpByMgr = () => {
                 mgr_id.push(data[i].id);
                 mgr_names.push(data[i].mgr_name);
             }
-            console.log(mgr_id);
-            console.log(mgr_names);
-
             inquirer
                 .prompt([
                     {
@@ -411,3 +420,73 @@ const updateEmpMgrSelect = (emp_id, emp_names, mgr_id, mgr_names) => {
         )
     })
 }
+
+
+//-----------------Deleting in the database -----------------
+const deleteEmployee = () => {
+    connection.query(
+        `SELECT id, CONCAT(first_name, " ", last_name) "name" FROM employee`, (err, data) => {
+            if (err) throw err;
+            const emp_id = [];
+            const emp_names = [];
+            data.forEach(item => {
+                emp_id.push(item.id);
+                emp_names.push(item.name);
+            })
+            inquirer
+                .prompt([
+                    {
+                        name: "selected_emp",
+                        type: "list",
+                        message: "Which employee would you like to delete?",
+                        choices: emp_names,
+                    }
+                ]).then(({ selected_emp }) => {
+                    const index = emp_names.findIndex(item => item === selected_emp);
+                    connection.query(
+                        `DELETE FROM employee WHERE id = ?`,
+                        emp_id[index],
+                        (err) => {
+                            if (err) throw err;
+                            mainMenu();
+                        }
+                    )
+                })
+        }
+    )
+}
+
+
+
+// const deleteDepartment = () => {
+//     connection.query(
+//         `SELECT id, name FROM department`, (err, data) => {
+//             if (err) throw err;
+//             const dept_id = [];
+//             const dept_names = [];
+//             data.forEach(item => {
+//                 dept_id.push(item.id);
+//                 dept_names.push(item.name);
+//             })
+//             inquirer
+//                 .prompt([
+//                     {
+//                         name: "selected_dept",
+//                         type: "list",
+//                         message: "Which department would you like to delete?",
+//                         choices: dept_names,
+//                     }
+//                 ]).then(({ selected_dept }) => {
+//                     const index = dept_names.findIndex(item => item === selected_dept);
+//                     connection.query(
+//                         `DELETE FROM department WHERE id = ?`,
+//                         dept_id[index],
+//                         (err) => {
+//                             if (err) throw err;
+//                             mainMenu();
+//                         }
+//                     )
+//                 })
+//         }
+//     )
+// }
