@@ -2,6 +2,7 @@ const mysql = require("mysql");
 const inquirer = require("inquirer");
 const cTable = require("console.table");
 
+// Reminders:  error handling, exit functions for lists
 
 //Connect to database
 const connection = mysql.createConnection({
@@ -27,6 +28,7 @@ const mainMenu = () => {
             "View all departments",
             "View all roles",
             "View all employees",
+            "View all employees by manager",
             "Add a department",
             "Add a role",
             "Add an employee",
@@ -45,6 +47,9 @@ const mainMenu = () => {
                 break;
             case "View all employees":
                 viewEmployee();
+                break;
+            case "View all employees by manager":
+                viewEmpByMgr();
                 break;
             case "Add a department":
                 addDepartment();
@@ -105,6 +110,48 @@ const viewEmployee = () => {
         console.table(data);
         mainMenu();
     }
+    )
+}
+
+const viewEmpByMgr = () => {
+    connection.query(
+        `SELECT id, CONCAT(first_name, " ", last_name) "mgr_name" FROM employee;`,
+        (err, data) => {
+            if (err) throw err;
+            const mgr_id = [];
+            const mgr_names = [];
+            for (let i = 0; i < data.length; i++) {
+                mgr_id.push(data[i].id);
+                mgr_names.push(data[i].mgr_name);
+            }
+            console.log(mgr_id);
+            console.log(mgr_names);
+
+            inquirer
+                .prompt([
+                    {
+                        name: "selected_mgr",
+                        type: "list",
+                        message: "Which manager's employees do you want to see?",
+                        choices: mgr_names
+                    }
+                ]).then(({ selected_mgr }) => {
+                    const mgr_index = mgr_names.findIndex(item => item === selected_mgr);
+                    connection.query(
+                        `SELECT E1.id, E1.first_name, E1.last_name, role.title, role.salary, department.name, CONCAT(E2.first_name," ", E2.last_name) "manager"
+                        FROM employee E1
+                        INNER JOIN role ON role.id = E1.role_id
+                        INNER JOIN department ON role.department_id = department.id
+                        INNER JOIN employee E2 ON E1.manager_id = E2.id WHERE E2.id = ?;`,
+                        mgr_id[mgr_index],
+                        (err, data) => {
+                            if (err) throw err;
+                            console.table(data);
+                            mainMenu();
+                        }
+                    )
+                })
+        }
     )
 }
 
