@@ -30,7 +30,8 @@ const mainMenu = () => {
             "Add a department",
             "Add a role",
             "Add an employee",
-            "Update employee role",
+            "Update employee's role",
+            "Update employee's manager",
             "Exit program",
         ],
     }).then((userResponse) => {
@@ -54,8 +55,11 @@ const mainMenu = () => {
             case "Add an employee":
                 addEmployee();
                 break;
-            case "Update employee role":
+            case "Update employee's role":
                 updateEmpRole();
+                break;
+            case "Update employee's manager":
+                updateEmpMgr();
                 break;
 
             default:
@@ -293,6 +297,66 @@ const updateEmpRoleSelect = (emp_id, emp_names, role_id, role_titles) => {
             SET role_id = ?
             WHERE id = ?;`,
             [role_id[role_index], emp_id[emp_index]],
+            (err) => {
+                if (err) throw err;
+                mainMenu();
+            }
+        )
+    })
+}
+
+const updateEmpMgr = () => {
+    connection.query(
+        `SELECT id, CONCAT(first_name, " ", last_name) "employee_name" FROM employee;`,
+        (err, data) => {
+            if (err) throw err;
+            const emp_id = [];
+            const emp_names = [];
+            for (let i = 0; i < data.length; i++) {
+                emp_id.push(data[i].id);
+                emp_names.push(data[i].employee_name);
+            }
+            connection.query(
+                `SELECT id, CONCAT(first_name, " ", last_name) "mgr_name" FROM employee;`,
+                (err, data) => {
+                    if (err) throw err;
+                    const mgr_id = [];
+                    const mgr_names = [];
+                    for (let i = 0; i < data.length; i++) {
+                        mgr_id.push(data[i].id);
+                        mgr_names.push(data[i].mgr_name);
+                    }
+                    updateEmpMgrSelect(emp_id, emp_names, mgr_id, mgr_names);
+                }
+            )
+        }
+    )
+};
+
+const updateEmpMgrSelect = (emp_id, emp_names, mgr_id, mgr_names) => {
+    inquirer.prompt([
+        {
+            name: "selected_emp",
+            type: "list",
+            message: "Please select the employee whose manager you are trying to update.",
+            choices: emp_names
+        },
+        //Need to be able to not choose yourself as manager, also allow for null
+        {
+            name: "selected_mgr",
+            type: "list",
+            message: "Please choose the new manager.",
+            choices: mgr_names
+        }
+
+    ]).then(({ selected_emp, selected_mgr }) => {
+        const emp_index = emp_names.findIndex(item => item === selected_emp);
+        const mgr_index = mgr_names.findIndex(item => item === selected_mgr);
+        connection.query(
+            `UPDATE employee
+            SET manager_id = ?
+            WHERE id = ?;`,
+            [mgr_id[mgr_index], emp_id[emp_index]],
             (err) => {
                 if (err) throw err;
                 mainMenu();
