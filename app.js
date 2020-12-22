@@ -2,6 +2,7 @@ const mysql = require("mysql");
 const inquirer = require("inquirer");
 const cTable = require("console.table");
 
+
 //Connect to database
 const connection = mysql.createConnection({
     host: "localhost",
@@ -29,7 +30,7 @@ const mainMenu = () => {
             "Add a department",
             "Add a role",
             "Add an employee",
-            "Update employee roles",
+            "Update employee role",
             "Exit program",
         ],
     }).then((userResponse) => {
@@ -53,8 +54,8 @@ const mainMenu = () => {
             case "Add an employee":
                 addEmployee();
                 break;
-            case "Update employee roles":
-                updateEmployeeRoles();
+            case "Update employee role":
+                updateEmpRole();
                 break;
 
             default:
@@ -239,51 +240,63 @@ const addEmployeeSelect = (role_id, role_titles, mgr_id, mgr_names) => {
 
 // -------------------- Updating the Database --------------------------
 
-const updateEmployee = () => {
+const updateEmpRole = () => {
+    connection.query(
+        `SELECT id, CONCAT(first_name, " ", last_name) "employee_name" FROM employee;`,
+        (err, data) => {
+            if (err) throw err;
+            const emp_id = [];
+            const emp_names = [];
+            for (let i = 0; i < data.length; i++) {
+                emp_id.push(data[i].id);
+                emp_names.push(data[i].employee_name);
+            }
+            connection.query(
+                `SELECT id, title FROM role;`,
+                (err, data) => {
+                    if (err) throw err;
+                    const role_id = [];
+                    const role_titles = [];
+                    for (let i = 0; i < data.length; i++) {
+                        role_id.push(data[i].id);
+                        role_titles.push(data[i].title);
+                    }
+                    updateEmpRoleSelect(emp_id, emp_names, role_id, role_titles);
+                }
+            )
+        }
+    )
+}
+
+
+const updateEmpRoleSelect = (emp_id, emp_names, role_id, role_titles) => {
     inquirer.prompt([
         {
-            name: "first_name",
-            type: "input",
-            message: "What is the first name of the employee you are trying to update?"
+            name: "selected_emp",
+            type: "list",
+            message: "Please select the employee whose role you are trying to update.",
+            choices: emp_names
         },
+        //Need to be able to exit 
         {
-            name: "last_name",
-            type: "input",
-            message: "What is the last name of the employee you are trying to update?"
-        },
-        {
-            name: "update_type",
-            type: "choices",
-            message: "What would you like to update?",
-            choices: [
-                "Employee's role",
-                "Employee's manager"
-            ]
-        },
+            name: "selected_role",
+            type: "list",
+            message: "Please choose the new role.",
+            choices: role_titles
+        }
 
-    ]).then(({ first_name, last_name, update_type }) => {
-        // if (update_type === "Employee's role") {
-        //     updateEmployeeRole();
-        // } else{
-        //     updateEmployeeManager(); 
-        // }
-
-        // connection.query(
-        //     "UPDATE employee SET role_id = ?, manager_id = ? WHERE first_name = ? AND last_name = ?",
-        //     [role_id, manager_id, first_name, last_name],
-        //     (err) => {
-        //         if (err) throw err;
-        //         mainMenu();
-        //     }
-        // )
+    ]).then(({ selected_emp, selected_role }) => {
+        const emp_index = emp_names.findIndex(item => item === selected_emp);
+        const role_index = role_titles.findIndex(item => item === selected_role);
+        connection.query(
+            `UPDATE employee
+            SET role_id = ?
+            WHERE id = ?;`,
+            [role_id[role_index], emp_id[emp_index]],
+            (err) => {
+                if (err) throw err;
+                mainMenu();
+            }
+        )
     })
 }
-
-const updateEmployeeRole = () => {
-
-}
-// const showRole = (role_id) => {
-//     connection.query(
-//         ""
-//     )
-// }
