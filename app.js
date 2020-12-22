@@ -65,6 +65,45 @@ const mainMenu = () => {
     })
 };
 
+// -------------------- Viewing the Database --------------------------
+
+const viewDepartment = () => {
+    connection.query(
+        "SELECT * FROM department", (err, data) => {
+            if (err) throw err;
+            console.table(data);
+            mainMenu();
+        }
+    )
+}
+
+const viewRole = () => {
+    connection.query(
+        `SELECT role.id, role.title, role.salary, department.name "department"
+        FROM role
+        INNER JOIN department ON role.department_id = department.id;`, (err, data) => {
+        if (err) throw err;
+        console.table(data);
+        mainMenu();
+    }
+    )
+}
+
+const viewEmployee = () => {
+    connection.query(
+        `SELECT E1.id, E1.first_name, E1.last_name, role.title, role.salary, department.name, CONCAT(E2.first_name," ", E2.last_name) "manager"
+        FROM employee E1
+        INNER JOIN role ON role.id = E1.role_id
+        INNER JOIN department ON role.department_id = department.id
+        LEFT JOIN employee E2 ON E1.manager_id = E2.id;`, (err, data) => {
+        if (err) throw err;
+        console.table(data);
+        mainMenu();
+    }
+    )
+}
+
+
 // -------------------- Adding to the Database --------------------------
 
 const addDepartment = () => {
@@ -85,32 +124,47 @@ const addDepartment = () => {
 }
 
 const addRole = () => {
-    inquirer.prompt([
-        {
-            name: "title",
-            type: "input",
-            message: "What is the title of the role?"
-        },
-        {
-            name: "salary",
-            type: "input",
-            message: "What is the salary of the role?"
-            //Need to add validation
-        },
-        {
-            name: "department_id",
-            type: "input",
-            message: "What is the department id of the role?"
-        },
-    ]).then(({ title, salary, department_id }) => {
-        connection.query(
-            "INSERT INTO role (title, salary, department_id) VALUE (?,?,?)", [title, salary, department_id], (err, data) => {
-                if (err) throw err;
-                mainMenu();
+    connection.query(
+        `SELECT * FROM department`, (err, data) => {
+            if (err) throw err;
+            // let choices = new Promise((resolve, reject) => {
+            const dept_id = [];
+            const dept_names = [];
+            for (let i = 0; i < data.length; i++) {
+                dept_id.push(data[i].id);
+                dept_names.push(data[i].name);
             }
-        )
-    })
-}
+            inquirer.prompt([
+                {
+                    name: "title",
+                    type: "input",
+                    message: "What is the title of the role?"
+                },
+                {
+                    name: "salary",
+                    type: "input",
+                    message: "What is the salary of the role?"
+                    //Need to add validation
+                },
+                {
+                    name: "department_name",
+                    type: "list",
+                    message: "Which department does this role belong to?",
+                    choices: dept_names
+                },
+            ]).then(({ title, salary, department_name }) => {
+                const index = dept_names.findIndex((item) => item === department_name);
+                connection.query(
+                    "INSERT INTO role (title, salary, department_id) VALUE (?,?,?)", [title, salary, dept_id[index]], (err) => {
+                        if (err) throw err;
+                        mainMenu();
+                    }
+                )
+            });
+        }
+    )
+};
+
 
 const addEmployee = () => {
     inquirer.prompt([
@@ -154,43 +208,6 @@ const addEmployee = () => {
     })
 }
 
-// -------------------- Viewing the Database --------------------------
-
-const viewDepartment = () => {
-    connection.query(
-        "SELECT * FROM department", (err, data) => {
-            if (err) throw err;
-            console.table(data);
-            mainMenu();
-        }
-    )
-}
-
-const viewRole = () => {
-    connection.query(
-        `SELECT role.id, role.title, role.salary, department.name "department"
-        FROM role
-        INNER JOIN department ON role.department_id = department.id;`, (err, data) => {
-        if (err) throw err;
-        console.table(data);
-        mainMenu();
-    }
-    )
-}
-
-const viewEmployee = () => {
-    connection.query(
-        `SELECT E1.id, E1.first_name, E1.last_name, role.title, role.salary, department.name, CONCAT(E2.first_name," ", E2.last_name) "manager"
-        FROM employee E1
-        INNER JOIN role ON role.id = E1.role_id
-        INNER JOIN department ON role.department_id = department.id
-        LEFT JOIN employee E2 ON E1.manager_id = E2.id;`, (err, data) => {
-        if (err) throw err;
-        console.table(data);
-        mainMenu();
-    }
-    )
-}
 
 // -------------------- Updating the Database --------------------------
 
