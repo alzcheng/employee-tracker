@@ -2,7 +2,6 @@ const mysql = require("mysql");
 const inquirer = require("inquirer");
 const cTable = require("console.table");
 
-// Reminders:  error handling, exit functions for lists
 // Todo: 
 // 1) Setup error handling for numbers
 // 2) Setup escapes for addition, update, and delete
@@ -102,6 +101,7 @@ const viewDepartment = () => {
     connection.query(
         "SELECT * FROM department", (err, data) => {
             if (err) throw err;
+            console.log("\n");
             console.table(data);
             mainMenu();
         }
@@ -114,6 +114,7 @@ const viewRole = () => {
         FROM role
         INNER JOIN department ON role.department_id = department.id;`, (err, data) => {
         if (err) throw err;
+        console.log("\n");
         console.table(data);
         mainMenu();
     }
@@ -128,6 +129,7 @@ const viewEmployee = () => {
         INNER JOIN department ON role.department_id = department.id
         LEFT JOIN employee E2 ON E1.manager_id = E2.id;`, (err, data) => {
         if (err) throw err;
+        console.log("\n");
         console.table(data);
         mainMenu();
     }
@@ -145,33 +147,37 @@ const viewEmpByMgr = () => {
                 mgr_id.push(item.id);
                 mgr_names.push(item.mgr_name);
             })
-            inquirer
-                .prompt([
-                    {
-                        name: "selected_mgr",
-                        type: "list",
-                        message: "Which manager's employees do you want to see?",
-                        choices: mgr_names
-                    }
-                ]).then(({ selected_mgr }) => {
-                    const mgr_index = mgr_names.findIndex(item => item === selected_mgr);
-                    connection.query(
-                        `SELECT E1.id, E1.first_name, E1.last_name, role.title, role.salary, department.name, CONCAT(E2.first_name," ", E2.last_name) "manager"
-                        FROM employee E1
-                        INNER JOIN role ON role.id = E1.role_id
-                        INNER JOIN department ON role.department_id = department.id
-                        INNER JOIN employee E2 ON E1.manager_id = E2.id WHERE E2.id = ?;`,
-                        mgr_id[mgr_index],
-                        (err, data) => {
-                            if (err) throw err;
-                            console.log("\n");
-                            console.table(data);
-                            mainMenu();
-                        }
-                    )
-                })
+            viewEmpByMgrSelect(mgr_id, mgr_names);
         }
     )
+}
+
+const viewEmpByMgrSelect = (mgr_id, mgr_names) => {
+    inquirer
+        .prompt([
+            {
+                name: "selected_mgr",
+                type: "list",
+                message: "Which manager's employees do you want to see?",
+                choices: mgr_names
+            }
+        ]).then(({ selected_mgr }) => {
+            const mgr_index = mgr_names.findIndex(item => item === selected_mgr);
+            connection.query(
+                `SELECT E1.id, E1.first_name, E1.last_name, role.title, role.salary, department.name, CONCAT(E2.first_name," ", E2.last_name) "manager"
+            FROM employee E1
+            INNER JOIN role ON role.id = E1.role_id
+            INNER JOIN department ON role.department_id = department.id
+            INNER JOIN employee E2 ON E1.manager_id = E2.id WHERE E2.id = ?;`,
+                mgr_id[mgr_index],
+                (err, data) => {
+                    if (err) throw err;
+                    console.log("\n");
+                    console.table(data);
+                    mainMenu();
+                }
+            )
+        })
 }
 
 const viewDeptBudget = () => {
@@ -486,28 +492,32 @@ const deleteEmployee = () => {
                 emp_id.push(item.id);
                 emp_names.push(item.name);
             })
-            inquirer
-                .prompt([
-                    {
-                        name: "selected_emp",
-                        type: "list",
-                        message: "Which employee would you like to delete?",
-                        choices: emp_names,
-                    }
-                ]).then(({ selected_emp }) => {
-                    const index = emp_names.findIndex(item => item === selected_emp);
-                    connection.query(
-                        `DELETE FROM employee WHERE id = ?`,
-                        emp_id[index],
-                        (err) => {
-                            if (err) throw err;
-                            mainMenu();
-                        }
-                    )
-                })
+            deleteEmpSelect(emp_id, emp_names);
         }
     )
 }
+
+const deleteEmpSelect = (emp_id, emp_names) => {
+    inquirer
+        .prompt([
+            {
+                name: "selected_emp",
+                type: "list",
+                message: "Which employee would you like to delete?",
+                choices: emp_names,
+            }
+        ]).then(({ selected_emp }) => {
+            const index = emp_names.findIndex(item => item === selected_emp);
+            connection.query(
+                `DELETE FROM employee WHERE id = ?`,
+                emp_id[index],
+                (err) => {
+                    if (err) throw err;
+                    mainMenu();
+                }
+            )
+        })
+};
 
 const deleteRole = () => {
     connection.query(
@@ -519,28 +529,32 @@ const deleteRole = () => {
                 role_id.push(item.id);
                 role_names.push(item.title);
             })
-            inquirer
-                .prompt([
-                    {
-                        name: "selected_role",
-                        type: "list",
-                        message: "Which department would you like to delete?",
-                        choices: role_names,
-                    }
-                ]).then(({ selected_role }) => {
-                    const index = role_names.findIndex(item => item === selected_role);
-                    connection.query(
-                        `DELETE FROM role WHERE id = ?`,
-                        role_id[index],
-                        (err) => {
-                            if (err) throw err;
-                            mainMenu();
-                        }
-                    )
-                })
+            deleteRoleSelect(role_id, role_names);
         }
     )
 }
+
+const deleteRoleSelect = (role_id, role_names) => {
+    inquirer
+        .prompt([
+            {
+                name: "selected_role",
+                type: "list",
+                message: "Which department would you like to delete?",
+                choices: role_names,
+            }
+        ]).then(({ selected_role }) => {
+            const index = role_names.findIndex(item => item === selected_role);
+            connection.query(
+                `DELETE FROM role WHERE id = ?`,
+                role_id[index],
+                (err) => {
+                    if (err) throw err;
+                    mainMenu();
+                }
+            )
+        })
+};
 
 const deleteDepartment = () => {
     connection.query(
@@ -552,25 +566,29 @@ const deleteDepartment = () => {
                 dept_id.push(item.id);
                 dept_names.push(item.name);
             })
-            inquirer
-                .prompt([
-                    {
-                        name: "selected_dept",
-                        type: "list",
-                        message: "Which department would you like to delete?",
-                        choices: dept_names,
-                    }
-                ]).then(({ selected_dept }) => {
-                    const index = dept_names.findIndex(item => item === selected_dept);
-                    connection.query(
-                        `DELETE FROM department WHERE id = ?`,
-                        dept_id[index],
-                        (err) => {
-                            if (err) throw err;
-                            mainMenu();
-                        }
-                    )
-                })
+            deleteDepartmentSelect(dept_id, dept_names)
         }
     )
 }
+
+const deleteDepartmentSelect = (dept_id, dept_names) => {
+    inquirer
+        .prompt([
+            {
+                name: "selected_dept",
+                type: "list",
+                message: "Which department would you like to delete?",
+                choices: dept_names,
+            }
+        ]).then(({ selected_dept }) => {
+            const index = dept_names.findIndex(item => item === selected_dept);
+            connection.query(
+                `DELETE FROM department WHERE id = ?`,
+                dept_id[index],
+                (err) => {
+                    if (err) throw err;
+                    mainMenu();
+                }
+            )
+        })
+};
