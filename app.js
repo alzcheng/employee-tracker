@@ -2,12 +2,6 @@ const mysql = require("mysql");
 const inquirer = require("inquirer");
 const cTable = require("console.table");
 
-// Todo: 
-// 1) Setup error handling for numbers
-// 2) Setup escapes for addition, update, and delete
-// 3) Setup warnings for delete for cascade
-// 4) Need to add null for add employee's manager
-
 //Connect to database
 const connection = mysql.createConnection({
     host: "localhost",
@@ -99,7 +93,7 @@ const mainMenu = () => {
 
 const viewDepartment = () => {
     connection.query(
-        "SELECT * FROM department", (err, data) => {
+        "SELECT * FROM department ORDER BY id ASC;", (err, data) => {
             if (err) throw err;
             console.log("\n");
             console.table(data);
@@ -112,7 +106,8 @@ const viewRole = () => {
     connection.query(
         `SELECT role.id, role.title, role.salary, department.name "department"
         FROM role
-        INNER JOIN department ON role.department_id = department.id;`, (err, data) => {
+        INNER JOIN department ON role.department_id = department.id
+        ORDER BY role.id ASC;`, (err, data) => {
         if (err) throw err;
         console.log("\n");
         console.table(data);
@@ -127,7 +122,8 @@ const viewEmployee = () => {
         FROM employee E1
         INNER JOIN role ON role.id = E1.role_id
         INNER JOIN department ON role.department_id = department.id
-        LEFT JOIN employee E2 ON E1.manager_id = E2.id;`, (err, data) => {
+        LEFT JOIN employee E2 ON E1.manager_id = E2.id
+        ORDER BY E1.id ASC;`, (err, data) => {
         if (err) throw err;
         console.log("\n");
         console.table(data);
@@ -138,7 +134,9 @@ const viewEmployee = () => {
 
 const viewEmpByMgr = () => {
     connection.query(
-        `SELECT id, CONCAT(first_name, " ", last_name) "mgr_name" FROM employee;`,
+        `SELECT id, CONCAT(first_name, " ", last_name) "mgr_name" 
+        FROM employee
+        ORDER BY id ASC;`,
         (err, data) => {
             if (err) throw err;
             const mgr_id = [];
@@ -206,7 +204,7 @@ const viewDeptBudgetSelect = (dept_id, dept_names) => {
     ]).then(({ department_name }) => {
         const index = dept_names.findIndex((item) => item === department_name);
         connection.query(
-            `SELECT SUM(role.salary) "Total Department Budget"
+            `SELECT department.name "department" , SUM(role.salary) "total department budget"
             FROM employee
             INNER JOIN role ON role.id = employee.role_id
             INNER JOIN department ON role.department_id = department.id
@@ -266,8 +264,14 @@ const addRoleSelect = (dept_id, dept_names) => {
         {
             name: "salary",
             type: "input",
-            message: "What is the salary of the role?"
-            //Need to add validation
+            message: "What is the salary of the role?",
+            validate: (input) => {
+                if (isNaN(parseInt(input)) || input === "") {
+                    return "Please enter a number for the salary.";
+                } else {
+                    return true;
+                }
+            },
         },
         {
             name: "department_name",
@@ -288,14 +292,16 @@ const addRoleSelect = (dept_id, dept_names) => {
 
 const addEmployee = () => {
     connection.query(
-        `SELECT id, title FROM role;`,
+        `SELECT role.id, CONCAT("role: ",role.title, " - dept: ", department.name) "role_titles"
+        FROM role
+        INNER JOIN department ON role.department_id = department.id;`,
         (err, data) => {
             if (err) throw err;
             const role_id = [];
             const role_titles = [];
             data.forEach(item => {
                 role_id.push(item.id);
-                role_titles.push(item.title);
+                role_titles.push(item.role_titles);
             });
             connection.query(
                 'SELECT id, CONCAT(first_name, " ", last_name) "mgr_name" FROM employee',
@@ -316,6 +322,7 @@ const addEmployee = () => {
 };
 
 const addEmployeeSelect = (role_id, role_titles, mgr_id, mgr_names) => {
+    mgr_names.push("None");
     inquirer.prompt([
         {
             name: "first_name",
@@ -330,7 +337,7 @@ const addEmployeeSelect = (role_id, role_titles, mgr_id, mgr_names) => {
         {
             name: "selected_role",
             type: "list",
-            message: "What role does this new employee have?",
+            message: "Which role does this new employee have?",
             choices: role_titles
         },
         {
@@ -342,15 +349,26 @@ const addEmployeeSelect = (role_id, role_titles, mgr_id, mgr_names) => {
     ]).then(({ first_name, last_name, selected_role, selected_mgr }) => {
         const role_index = role_titles.findIndex(item => item === selected_role);
         const mgr_index = mgr_names.findIndex(item => item === selected_mgr);
-        connection.query(
-            `INSERT INTO employee(first_name, last_name, role_id, manager_id) 
-            VALUE(?, ?, ?, ?);`,
-            [first_name, last_name, role_id[role_index], mgr_id[mgr_index]],
-            (err) => {
-                if (err) throw err;
-                mainMenu();
-            }
-        )
+        if (mgr_index < 0) {
+            `INSERT INTO employee(first_name, last_name, role_id) 
+            VALUE(?, ?, ?);`,
+                [first_name, last_name, role_id[role_index]],
+                (err) => {
+                    if (err) throw err;
+                    mainMenu();
+                }
+        } else {
+            connection.query(
+                `INSERT INTO employee(first_name, last_name, role_id, manager_id) 
+                VALUE(?, ?, ?, ?);`,
+                [first_name, last_name, role_id[role_index], mgr_id[mgr_index]],
+                (err) => {
+                    if (err) throw err;
+                    mainMenu();
+                }
+            )
+        }
+
 
     })
 }
@@ -394,7 +412,6 @@ const updateEmpRoleSelect = (emp_id, emp_names, role_id, role_titles) => {
             message: "Please select the employee whose role you are trying to update.",
             choices: emp_names
         },
-        //Need to be able to exit 
         {
             name: "selected_role",
             type: "list",
@@ -447,6 +464,8 @@ const updateEmpMgr = () => {
 };
 
 const updateEmpMgrSelect = (emp_id, emp_names, mgr_id, mgr_names) => {
+    //handles the case when the employee has no manager
+    mgr_names.push("None");
     inquirer.prompt([
         {
             name: "selected_emp",
@@ -465,16 +484,33 @@ const updateEmpMgrSelect = (emp_id, emp_names, mgr_id, mgr_names) => {
     ]).then(({ selected_emp, selected_mgr }) => {
         const emp_index = emp_names.findIndex(item => item === selected_emp);
         const mgr_index = mgr_names.findIndex(item => item === selected_mgr);
-        connection.query(
-            `UPDATE employee
-            SET manager_id = ?
-            WHERE id = ?;`,
-            [mgr_id[mgr_index], emp_id[emp_index]],
-            (err) => {
-                if (err) throw err;
-                mainMenu();
-            }
-        )
+        if (selected_emp === selected_mgr) {
+            console.log("\nSorry, you can't be your own boss here! \nPlease try something else. \n");
+            mainMenu();
+        } else if (selected_mgr === "None") {
+            connection.query(
+                `UPDATE employee
+                SET manager_id = NULL
+                WHERE id = ?;`,
+                emp_id[emp_index],
+                (err) => {
+                    if (err) throw err;
+                    mainMenu();
+                }
+            )
+        } else {
+            connection.query(
+                `UPDATE employee
+                SET manager_id = ?
+                WHERE id = ?;`,
+                [mgr_id[mgr_index], emp_id[emp_index]],
+                (err) => {
+                    if (err) throw err;
+                    mainMenu();
+                }
+            )
+        }
+
     })
 }
 
@@ -520,18 +556,33 @@ const deleteEmpSelect = (emp_id, emp_names) => {
 };
 
 const deleteRole = () => {
-    connection.query(
-        `SELECT id, title FROM role`, (err, data) => {
-            if (err) throw err;
-            const role_id = [];
-            const role_names = [];
-            data.forEach(item => {
-                role_id.push(item.id);
-                role_names.push(item.title);
-            })
-            deleteRoleSelect(role_id, role_names);
+    inquirer.prompt(
+        {
+            name: "decision",
+            type: "confirm",
+            message: "When you delete a role, you will also permanently be deleting all the employees and their data that are associated with that role.\n\nAre you sure you want to continue?"
         }
-    )
+    ).then(({ decision }) => {
+        if (decision) {
+            connection.query(
+                `SELECT role.id, CONCAT("role: ",role.title, "  dept: ", department.name) "role_titles"
+                FROM role
+                INNER JOIN department ON role.department_id = department.id;`,
+                (err, data) => {
+                    if (err) throw err;
+                    const role_id = [];
+                    const role_names = [];
+                    data.forEach(item => {
+                        role_id.push(item.id);
+                        role_names.push(item.role_titles);
+                    })
+                    deleteRoleSelect(role_id, role_names);
+                }
+            )
+        } else {
+            mainMenu();
+        }
+    })
 }
 
 const deleteRoleSelect = (role_id, role_names) => {
@@ -557,19 +608,33 @@ const deleteRoleSelect = (role_id, role_names) => {
 };
 
 const deleteDepartment = () => {
-    connection.query(
-        `SELECT id, name FROM department`, (err, data) => {
-            if (err) throw err;
-            const dept_id = [];
-            const dept_names = [];
-            data.forEach(item => {
-                dept_id.push(item.id);
-                dept_names.push(item.name);
-            })
-            deleteDepartmentSelect(dept_id, dept_names)
-        }
-    )
-}
+    inquirer
+        .prompt(
+            {
+                name: "decision",
+                type: "confirm",
+                message: "When you delete a department, you will also permanently be deleting all the roles AND employees and their data that are associated with that department.\n\nAre you sure you want to continue?"
+            }
+        ).then(({ decision }) => {
+            if (decision) {
+                connection.query(
+                    `SELECT id, name FROM department`,
+                    (err, data) => {
+                        if (err) throw err;
+                        const dept_id = [];
+                        const dept_names = [];
+                        data.forEach(item => {
+                            dept_id.push(item.id);
+                            dept_names.push(item.name);
+                        })
+                        deleteDepartmentSelect(dept_id, dept_names)
+                    }
+                )
+            } else {
+                mainMenu();
+            }
+        })
+};
 
 const deleteDepartmentSelect = (dept_id, dept_names) => {
     inquirer
