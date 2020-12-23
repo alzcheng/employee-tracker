@@ -3,6 +3,11 @@ const inquirer = require("inquirer");
 const cTable = require("console.table");
 
 // Reminders:  error handling, exit functions for lists
+// Todo: 
+// 1) Setup error handling for numbers
+// 2) Setup escapes for addition, update, and delete
+// 3) Setup warnings for delete for cascade
+// 4) Need to add null for add employee's manager
 
 //Connect to database
 const connection = mysql.createConnection({
@@ -29,6 +34,7 @@ const mainMenu = () => {
             "View all roles",
             "View all employees",
             "View all employees by manager",
+            "View the total utilized budget of a department",
             "Add a department",
             "Add a role",
             "Add an employee",
@@ -37,7 +43,7 @@ const mainMenu = () => {
             "Delete a department",
             "Delete a role",
             "Delete an employee",
-            "Exit program",
+            "Exit program"
         ],
     }).then((userResponse) => {
         console.log(userResponse.action);
@@ -53,6 +59,9 @@ const mainMenu = () => {
                 break;
             case "View all employees by manager":
                 viewEmpByMgr();
+                break;
+            case "View the total utilized budget of a department":
+                viewDeptBudget();
                 break;
             case "Add a department":
                 addDepartment();
@@ -132,10 +141,10 @@ const viewEmpByMgr = () => {
             if (err) throw err;
             const mgr_id = [];
             const mgr_names = [];
-            for (let i = 0; i < data.length; i++) {
-                mgr_id.push(data[i].id);
-                mgr_names.push(data[i].mgr_name);
-            }
+            data.forEach(item => {
+                mgr_id.push(item.id);
+                mgr_names.push(item.mgr_name);
+            })
             inquirer
                 .prompt([
                     {
@@ -155,6 +164,7 @@ const viewEmpByMgr = () => {
                         mgr_id[mgr_index],
                         (err, data) => {
                             if (err) throw err;
+                            console.log("\n");
                             console.table(data);
                             mainMenu();
                         }
@@ -163,6 +173,47 @@ const viewEmpByMgr = () => {
         }
     )
 }
+
+const viewDeptBudget = () => {
+    connection.query(
+        `SELECT * FROM department`, (err, data) => {
+            if (err) throw err;
+            const dept_id = [];
+            const dept_names = [];
+            data.forEach(item => {
+                dept_id.push(item.id);
+                dept_names.push(item.name);
+            })
+            viewDeptBudgetSelect(dept_id, dept_names);
+        }
+    )
+};
+
+const viewDeptBudgetSelect = (dept_id, dept_names) => {
+    inquirer.prompt([
+        {
+            name: "department_name",
+            type: "list",
+            message: "Which department's budget would you like to see?",
+            choices: dept_names
+        },
+    ]).then(({ department_name }) => {
+        const index = dept_names.findIndex((item) => item === department_name);
+        connection.query(
+            `SELECT SUM(role.salary) "Total Department Budget"
+            FROM employee
+            INNER JOIN role ON role.id = employee.role_id
+            INNER JOIN department ON role.department_id = department.id
+            WHERE department.id = ?;`, dept_id[index], (err, data) => {
+            if (err) throw err;
+            console.log("\n");
+            console.table(data);
+            mainMenu();
+        }
+        )
+    });
+}
+
 
 
 // -------------------- Adding to the Database --------------------------
@@ -190,10 +241,10 @@ const addRole = () => {
             if (err) throw err;
             const dept_id = [];
             const dept_names = [];
-            for (let i = 0; i < data.length; i++) {
-                dept_id.push(data[i].id);
-                dept_names.push(data[i].name);
-            }
+            data.forEach(item => {
+                dept_id.push(item.id);
+                dept_names.push(item.name);
+            });
             addRoleSelect(dept_id, dept_names);
         }
     )
@@ -236,10 +287,10 @@ const addEmployee = () => {
             if (err) throw err;
             const role_id = [];
             const role_titles = [];
-            for (let i = 0; i < data.length; i++) {
-                role_id.push(data[i].id);
-                role_titles.push(data[i].title);
-            }
+            data.forEach(item => {
+                role_id.push(item.id);
+                role_titles.push(item.title);
+            });
             connection.query(
                 'SELECT id, CONCAT(first_name, " ", last_name) "mgr_name" FROM employee',
                 (err, data) => {
@@ -247,10 +298,10 @@ const addEmployee = () => {
                     //Need to insert case for NULL
                     const mgr_id = [];
                     const mgr_names = [];
-                    for (let i = 0; i < data.length; i++) {
-                        mgr_id.push(data[i].id);
-                        mgr_names.push(data[i].mgr_name);
-                    }
+                    data.forEach(item => {
+                        mgr_id.push(item.id);
+                        mgr_names.push(item.mgr_name);
+                    });
                     addEmployeeSelect(role_id, role_titles, mgr_id, mgr_names);
                 }
             )
@@ -307,20 +358,20 @@ const updateEmpRole = () => {
             if (err) throw err;
             const emp_id = [];
             const emp_names = [];
-            for (let i = 0; i < data.length; i++) {
-                emp_id.push(data[i].id);
-                emp_names.push(data[i].employee_name);
-            }
+            data.forEach(item => {
+                emp_id.push(item.id);
+                emp_names.push(item.employee_name);
+            })
             connection.query(
                 `SELECT id, title FROM role;`,
                 (err, data) => {
                     if (err) throw err;
                     const role_id = [];
                     const role_titles = [];
-                    for (let i = 0; i < data.length; i++) {
-                        role_id.push(data[i].id);
-                        role_titles.push(data[i].title);
-                    }
+                    data.forEach(item => {
+                        role_id.push(item.id);
+                        role_titles.push(item.title);
+                    })
                     updateEmpRoleSelect(emp_id, emp_names, role_id, role_titles);
                 }
             )
@@ -368,20 +419,20 @@ const updateEmpMgr = () => {
             if (err) throw err;
             const emp_id = [];
             const emp_names = [];
-            for (let i = 0; i < data.length; i++) {
-                emp_id.push(data[i].id);
-                emp_names.push(data[i].employee_name);
-            }
+            data.forEach(item => {
+                emp_id.push(item.id);
+                emp_names.push(item.employee_name);
+            })
             connection.query(
                 `SELECT id, CONCAT(first_name, " ", last_name) "mgr_name" FROM employee;`,
                 (err, data) => {
                     if (err) throw err;
                     const mgr_id = [];
                     const mgr_names = [];
-                    for (let i = 0; i < data.length; i++) {
-                        mgr_id.push(data[i].id);
-                        mgr_names.push(data[i].mgr_name);
-                    }
+                    data.forEach(item => {
+                        mgr_id.push(item.id);
+                        mgr_names.push(item.mgr_name);
+                    })
                     updateEmpMgrSelect(emp_id, emp_names, mgr_id, mgr_names);
                 }
             )
@@ -423,6 +474,8 @@ const updateEmpMgrSelect = (emp_id, emp_names, mgr_id, mgr_names) => {
 
 
 //-----------------Deleting in the database -----------------
+
+// Need to setup warnings
 const deleteEmployee = () => {
     connection.query(
         `SELECT id, CONCAT(first_name, " ", last_name) "name" FROM employee`, (err, data) => {
@@ -456,37 +509,68 @@ const deleteEmployee = () => {
     )
 }
 
+const deleteRole = () => {
+    connection.query(
+        `SELECT id, title FROM role`, (err, data) => {
+            if (err) throw err;
+            const role_id = [];
+            const role_names = [];
+            data.forEach(item => {
+                role_id.push(item.id);
+                role_names.push(item.title);
+            })
+            inquirer
+                .prompt([
+                    {
+                        name: "selected_role",
+                        type: "list",
+                        message: "Which department would you like to delete?",
+                        choices: role_names,
+                    }
+                ]).then(({ selected_role }) => {
+                    const index = role_names.findIndex(item => item === selected_role);
+                    connection.query(
+                        `DELETE FROM role WHERE id = ?`,
+                        role_id[index],
+                        (err) => {
+                            if (err) throw err;
+                            mainMenu();
+                        }
+                    )
+                })
+        }
+    )
+}
 
-
-// const deleteDepartment = () => {
-//     connection.query(
-//         `SELECT id, name FROM department`, (err, data) => {
-//             if (err) throw err;
-//             const dept_id = [];
-//             const dept_names = [];
-//             data.forEach(item => {
-//                 dept_id.push(item.id);
-//                 dept_names.push(item.name);
-//             })
-//             inquirer
-//                 .prompt([
-//                     {
-//                         name: "selected_dept",
-//                         type: "list",
-//                         message: "Which department would you like to delete?",
-//                         choices: dept_names,
-//                     }
-//                 ]).then(({ selected_dept }) => {
-//                     const index = dept_names.findIndex(item => item === selected_dept);
-//                     connection.query(
-//                         `DELETE FROM department WHERE id = ?`,
-//                         dept_id[index],
-//                         (err) => {
-//                             if (err) throw err;
-//                             mainMenu();
-//                         }
-//                     )
-//                 })
-//         }
-//     )
-// }
+const deleteDepartment = () => {
+    connection.query(
+        `SELECT id, name FROM department`, (err, data) => {
+            if (err) throw err;
+            const dept_id = [];
+            const dept_names = [];
+            data.forEach(item => {
+                dept_id.push(item.id);
+                dept_names.push(item.name);
+            })
+            inquirer
+                .prompt([
+                    {
+                        name: "selected_dept",
+                        type: "list",
+                        message: "Which department would you like to delete?",
+                        choices: dept_names,
+                    }
+                ]).then(({ selected_dept }) => {
+                    const index = dept_names.findIndex(item => item === selected_dept);
+                    connection.query(
+                        `DELETE FROM department WHERE id = ?`,
+                        dept_id[index],
+                        (err) => {
+                            if (err) throw err;
+                            mainMenu();
+                        }
+                    )
+                })
+        }
+    )
+}
