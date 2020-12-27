@@ -8,7 +8,7 @@
   * [Questions](##Questions)
   
   ## Description
-  This is a Node CLI program that allows the user to view, add, update, and delete elements in their database for employees, roles, and departments.
+  This is a Node CLI program that allows the user to view, add, update, and delete elements in their database for employees, roles, and departments. 
 
   ### Functionalities
   * View 
@@ -34,7 +34,7 @@
   Do a git pull command at this [github repo](https://github.com/alzcheng/employee-tracker) to a local folder.  Open mySQL workbench and use the schema.sql to generate the database.  Modify the connection code to connect to the local sql database.
 
   ## Usage Information
-  Open the terminal in the folder containing app.js.  Type node app.js in the terminal to start the program. 
+  Open the terminal in the folder containing app.js.  Type node app.js in the terminal to start the program. See [link](https://youtu.be/wxCOasbW4BE) for the user video.
 
   ## Contribution Guidelines
   The contributions for this project is subjected to [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](code_of_conduct.md). 
